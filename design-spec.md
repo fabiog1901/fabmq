@@ -32,7 +32,7 @@ The SQL interface remains a first-class interface rather than an implementation 
 
 ---
 
-^## 2. Goals
+## 2. Goals
 
 The product should provide:
 
@@ -63,7 +63,7 @@ The SDK and CLI should hide implementation details such as:
 
 ---
 
-^## 3. Non-Goals
+## 3. Non-Goals
 
 The initial implementation should not attempt to reproduce every Kafka feature.
 
@@ -82,7 +82,7 @@ The architecture should allow these capabilities to be added later without redes
 
 ---
 
-^## 4. High-Level Architecture
+## 4. High-Level Architecture
 
 ```text
                     Applications
@@ -122,7 +122,7 @@ This keeps the product stateless and avoids introducing another distributed serv
 
 ---
 
-^## 5. Python Package
+## 5. Python Package
 
 Tentative package name:
 
@@ -155,7 +155,7 @@ The exact module layout is not important initially, but database access, produce
 
 ---
 
-^## 6. Core Client
+## 6. Core Client
 
 The main SDK entry point should be a client object.
 
@@ -184,7 +184,7 @@ This distinction is important for transactional enqueue.
 
 ---
 
-^## 7. Database Initialization
+## 7. Database Initialization
 
 The CLI should install the complete MQ schema.
 
@@ -234,7 +234,7 @@ to apply database migrations.
 
 ---
 
-^## 8. Topics
+## 8. Topics
 
 A topic represents an independent logical queue.
 
@@ -276,7 +276,7 @@ A topic must exist before messages can be enqueued.
 
 ---
 
-^## 9. Buckets
+## 9. Buckets
 
 Messages within a topic are divided across buckets.
 
@@ -306,7 +306,7 @@ Ordering is guaranteed **within a bucket**, not across the entire topic.
 
 ---
 
-^## 10. Placeholder Rows
+## 10. Placeholder Rows
 
 Each topic contains one permanent placeholder message per bucket:
 
@@ -334,7 +334,7 @@ They are not consumer-visible messages.
 
 ---
 
-^## 11. Producer Ordering
+## 11. Producer Ordering
 
 A producer determines a bucket using a deterministic routing key.
 
@@ -360,7 +360,7 @@ This could provide FIFO ordering for all messages sharing the same `account_id`.
 
 ---
 
-^## 12. Producer Serialization
+## 12. Producer Serialization
 
 CockroachDB tables are ordered indexes rather than append-only log files.
 
@@ -402,7 +402,7 @@ Different buckets remain independent and can accept messages concurrently.
 
 ---
 
-^## 13. Producer SQL API
+## 13. Producer SQL API
 
 The primary low-level producer API is:
 
@@ -425,7 +425,7 @@ Applications should normally use the SDK, but direct SQL remains supported.
 
 ---
 
-^## 14. Python Producer API
+## 14. Python Producer API
 
 Basic API:
 
@@ -445,7 +445,7 @@ The API should also allow strings/bytes where appropriate.
 
 ---
 
-^## 15. Transactional Enqueue
+## 15. Transactional Enqueue
 
 Transactional enqueue is an important differentiating feature.
 
@@ -479,7 +479,7 @@ The SDK must therefore never force creation of its own transaction when a caller
 
 ---
 
-^## 16. Producer Batch API
+## 16. Producer Batch API
 
 The SDK should support explicit batching:
 
@@ -508,7 +508,7 @@ This is intentionally different from independently hashing every message.
 
 ---
 
-^## 17. Batch Sequence Allocation
+## 17. Batch Sequence Allocation
 
 Suppose the current bucket tail is:
 
@@ -561,7 +561,7 @@ This is the primary producer micro-batching optimization.
 
 ---
 
-^## 18. Automatic Producer Micro-Batching
+## 18. Automatic Producer Micro-Batching
 
 A later SDK optimization may transparently accumulate messages for a short interval.
 
@@ -605,7 +605,7 @@ It must remain optional because batching changes enqueue latency.
 
 ---
 
-^## 19. Consumer Groups
+## 19. Consumer Groups
 
 Consumers belong to a named consumer group.
 
@@ -632,7 +632,7 @@ Each group maintains its own progress.
 
 ---
 
-^## 20. Consumer Position
+## 20. Consumer Position
 
 Consumer progress is stored in `hwm`.
 
@@ -652,7 +652,7 @@ The SDK should hide this mechanism completely from applications.
 
 ---
 
-^## 21. Consumer Ownership Contract
+## 21. Consumer Ownership Contract
 
 At any given time:
 
@@ -685,7 +685,7 @@ The exclusivity rule applies only within the same:
 
 ---
 
-^## 22. Initial Consumer Assignment
+## 22. Initial Consumer Assignment
 
 The first implementation may use explicit bucket assignment.
 
@@ -705,7 +705,7 @@ The SDK must not allow two workers to intentionally claim the same bucket within
 
 ---
 
-^## 23. Consumer API
+## 23. Consumer API
 
 The consumer API should hide:
 
@@ -740,7 +740,7 @@ Internal fields such as `seq_id` should not normally be exposed.
 
 ---
 
-^## 24. Consumer Context Semantics
+## 24. Consumer Context Semantics
 
 The context manager provides acknowledgement semantics.
 
@@ -783,7 +783,7 @@ If `process(job)` raises an exception, the HWM must not advance beyond that batc
 
 ---
 
-^## 25. Consumer Transaction Strategy
+## 25. Consumer Transaction Strategy
 
 The simplest initial implementation may keep a CockroachDB transaction open while the application processes the batch:
 
@@ -810,7 +810,7 @@ Long-running job support should eventually use a lease/claim mechanism rather th
 
 ---
 
-^## 26. Consumer Iterator API
+## 26. Consumer Iterator API
 
 For long-running workers, an iterator-style interface should eventually be provided.
 
@@ -842,7 +842,7 @@ The batch context continues to control acknowledgement.
 
 ---
 
-^## 27. Automatic Consumer Coordination
+## 27. Automatic Consumer Coordination
 
 A later enterprise feature should automatically distribute buckets among consumers.
 
@@ -867,7 +867,7 @@ No external coordinator may be required.
 
 ---
 
-^## 28. Consumer Leases
+## 28. Consumer Leases
 
 Automatic coordination should use leases stored in CockroachDB.
 
@@ -888,7 +888,7 @@ If the lease expires, another consumer may acquire the bucket.
 
 ---
 
-^## 29. Fencing
+## 29. Fencing
 
 Lease ownership should include a monotonically increasing generation/fencing token.
 
@@ -909,7 +909,7 @@ The fencing invariant should be enforced by CockroachDB rather than relying sole
 
 ---
 
-^## 30. Retry Behavior
+## 30. Retry Behavior
 
 The SDK should own CockroachDB transaction retry handling.
 
@@ -930,7 +930,7 @@ The SDK must never silently rerun user processing code unless the API contract e
 
 ---
 
-^## 31. Dead-Letter Queues
+## 31. Dead-Letter Queues
 
 A future feature should support dead-letter topics.
 
@@ -965,7 +965,7 @@ Where possible, DLQ insertion and HWM advancement should occur atomically.
 
 ---
 
-^## 32. Retry Policies
+## 32. Retry Policies
 
 Future consumer configuration may support:
 
@@ -991,7 +991,7 @@ A later design should explicitly define whether a failed message blocks subseque
 
 ---
 
-^## 33. Retention
+## 33. Retention
 
 Message cleanup is handled by CockroachDB Row-Level TTL.
 
@@ -1016,7 +1016,7 @@ Topic configuration should be stored in CockroachDB.
 
 ---
 
-^## 34. Observability
+## 34. Observability
 
 The product should expose MQ-level metrics rather than requiring users to derive everything from raw SQL.
 
@@ -1038,7 +1038,7 @@ Useful metrics include:
 
 ---
 
-^## 35. Consumer Lag
+## 35. Consumer Lag
 
 For every:
 
@@ -1078,7 +1078,7 @@ Time-based lag should also be supported because message-count lag alone may be m
 
 ---
 
-^## 36. Status CLI
+## 36. Status CLI
 
 Operational commands should include:
 
@@ -1097,7 +1097,7 @@ It must not maintain its own persistent state.
 
 ---
 
-^## 37. Pause and Resume
+## 37. Pause and Resume
 
 A future operational feature should support:
 
@@ -1126,7 +1126,7 @@ Pause state belongs in CockroachDB.
 
 ---
 
-^## 38. Graceful Consumer Drain
+## 38. Graceful Consumer Drain
 
 Consumers should eventually support:
 
@@ -1146,7 +1146,7 @@ This allows fast reassignment during deployments and shutdowns.
 
 ---
 
-^## 39. Prefetch
+## 39. Prefetch
 
 The SDK may eventually prefetch messages while processing the current batch.
 
@@ -1163,7 +1163,7 @@ Prefetching must never allow the HWM to advance beyond a batch that has not succ
 
 ---
 
-^## 40. Adaptive Consumer Batching
+## 40. Adaptive Consumer Batching
 
 The SDK may support:
 
@@ -1193,7 +1193,7 @@ This behavior belongs in the SDK.
 
 ---
 
-^## 41. Backpressure
+## 41. Backpressure
 
 Future topic configuration may define limits such as:
 
@@ -1216,7 +1216,7 @@ Backpressure may eventually be tied to specific critical consumer groups rather 
 
 ---
 
-^## 42. Geo-Awareness
+## 42. Geo-Awareness
 
 Buckets can potentially be mapped to CockroachDB placement/locality configuration.
 
@@ -1226,7 +1226,7 @@ This should be considered an optimization rather than part of the fundamental qu
 
 ---
 
-^## 43. Statelessness Requirement
+## 43. Statelessness Requirement
 
 The Python application must not store durable queue state locally.
 
@@ -1255,7 +1255,7 @@ Local filesystem loss must not affect queue correctness.
 
 ---
 
-^## 44. Direct SQL Access
+## 44. Direct SQL Access
 
 The SDK must not prevent advanced users from interacting with the database directly.
 
@@ -1289,7 +1289,7 @@ In particular, direct message insertion that bypasses producer bucket locking mu
 
 ---
 
-^## 45. Public API Philosophy
+## 45. Public API Philosophy
 
 The SDK should expose intent rather than database mechanics.
 
@@ -1317,7 +1317,7 @@ Those are implementation details.
 
 ---
 
-^## 46. Error Model
+## 46. Error Model
 
 Define package-specific exceptions.
 
@@ -1354,7 +1354,7 @@ Unexpected CockroachDB errors may retain their original exception as the Python 
 
 ---
 
-^## 47. Connection Management
+## 47. Connection Management
 
 The SDK should support:
 
@@ -1386,7 +1386,7 @@ The SDK must never close a connection supplied by the application.
 
 ---
 
-^## 48. CLI Connection Configuration
+## 48. CLI Connection Configuration
 
 The CLI should accept connection information through standard mechanisms.
 
@@ -1407,7 +1407,7 @@ Connection configuration is runtime configuration, not durable MQ state.
 
 ---
 
-^## 49. Data Models
+## 49. Data Models
 
 Suggested Python models:
 
@@ -1437,7 +1437,7 @@ Operational/admin APIs may expose richer metadata.
 
 ---
 
-^## 50. Threading and Async Support
+## 50. Threading and Async Support
 
 Initial implementation should favor correctness and a simple synchronous API.
 
@@ -1459,7 +1459,7 @@ Avoid designing separate conceptual APIs for sync and async operation.
 
 ---
 
-^## 51. Performance Principles
+## 51. Performance Principles
 
 The implementation should optimize around the actual queue architecture:
 
@@ -1489,7 +1489,7 @@ Administrative queries should not interfere significantly with producer/consumer
 
 ---
 
-^## 52. Core Correctness Invariants
+## 52. Core Correctness Invariants
 
 Codex should treat the following as non-negotiable invariants.
 
@@ -1539,7 +1539,7 @@ When the caller supplies an existing transaction, enqueue must participate in th
 
 ---
 
-^## 53. Testing Strategy
+## 53. Testing Strategy
 
 Tests should include both unit and integration tests.
 
@@ -1577,7 +1577,7 @@ Concurrency tests should intentionally create races rather than merely test sequ
 
 ---
 
-^## 54. Benchmarking
+## 54. Benchmarking
 
 Create a benchmark suite early.
 
@@ -1621,7 +1621,7 @@ The batch producer optimization should be benchmarked against individual enqueue
 
 ---
 
-^## 55. Initial CLI Scope
+## 55. Initial CLI Scope
 
 Version 1 should stay small.
 
@@ -1650,7 +1650,7 @@ There should not be separate CLI-specific implementations of queue behavior.
 
 ---
 
-^## 56. Initial SDK Scope
+## 56. Initial SDK Scope
 
 Version 1 should prioritize:
 
@@ -1690,9 +1690,9 @@ Everything else can evolve from this foundation.
 
 ---
 
-^## 57. Suggested Implementation Phases
+## 57. Suggested Implementation Phases
 
-## Phase 1 — Database Bootstrap
+### Phase 1 — Database Bootstrap
 
 Implement:
 
@@ -1716,7 +1716,7 @@ fabmq topic list
 
 works against a fresh CockroachDB database.
 
-## Phase 2 — Producer
+### Phase 2 — Producer
 
 Implement:
 
@@ -1728,7 +1728,7 @@ Implement:
 
 Validate same-bucket concurrency heavily.
 
-## Phase 3 — Producer Batching
+### Phase 3 — Producer Batching
 
 Implement:
 
@@ -1739,7 +1739,7 @@ Implement:
 
 Benchmark against individual enqueue.
 
-## Phase 4 — Basic Consumer
+### Phase 4 — Basic Consumer
 
 Implement:
 
@@ -1757,7 +1757,7 @@ Implement:
 * HWM insertion.
 * Context success/failure semantics.
 
-## Phase 5 — Operational CLI
+### Phase 5 — Operational CLI
 
 Implement:
 
@@ -1768,7 +1768,7 @@ Implement:
 * Queue depth.
 * Bucket statistics.
 
-## Phase 6 — Consumer Coordination
+### Phase 6 — Consumer Coordination
 
 Implement:
 
@@ -1780,7 +1780,7 @@ Implement:
 * Rebalancing.
 * Graceful drain.
 
-## Phase 7 — Enterprise Processing Features
+### Phase 7 — Enterprise Processing Features
 
 Implement as justified by demand:
 
@@ -1794,7 +1794,7 @@ Implement as justified by demand:
 
 ---
 
-^## 58. Design Principle for Future Features
+## 58. Design Principle for Future Features
 
 When deciding whether functionality belongs in CockroachDB or Python, use this rule:
 
@@ -1821,7 +1821,7 @@ This separation should remain a core architectural principle.
 
 ---
 
-^## 59. Product Definition
+## 59. Product Definition
 
 The resulting product should be describable as:
 
@@ -1835,7 +1835,7 @@ Neither the SDK nor CLI owns durable state.
 
 ---
 
-^## 60. Codex Implementation Guidance
+## 60. Codex Implementation Guidance
 
 When implementing this specification:
 
@@ -1852,4 +1852,4 @@ When implementing this specification:
 11. Preserve the `(topic, bucket, seq_id=0)` placeholder locking protocol.
 12. Treat all correctness invariants in this document as requirements, not suggestions.
 
-A useful next step for Codex is to implement **Phases 1–3 first**, including concurrency tests and the batch-enqueue benchmark, before introducing the consumer coordination layer.
+A useful next step for Codex is to implement **Phases 1-3 first**, including concurrency tests and the batch-enqueue benchmark, before introducing the consumer coordination layer.

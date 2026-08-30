@@ -79,8 +79,7 @@ class Producer:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT job_id, seq_id
-                FROM enqueue_jobs(%s, %s);
+                SELECT enqueue_jobs(%s, %s);
                 """,
                 (
                     self.topic,

@@ -47,10 +47,11 @@ To emulate append behavior, the producer:
 
 To prevent concurrent producers from selecting the same sequence number, each producer must first acquire an exclusive lock for the target bucket. This serializes inserts at the bucket level.
 
-Producer clients do not need to implement this logic directly. They enqueue messages through the following function:
+Producer clients do not need to implement this logic directly. They enqueue messages through the following functions:
 
 ```sql
-SELECT enqueue_job('payload', 'topic_name');
+SELECT enqueue_job('topic_name', 'payload');
+SELECT enqueue_jobs('topic_name', ARRAY['p1', 'p2']); 
 ```
 
 The function hashes the payload using CRC32 and calculates the bucket as:
@@ -165,14 +166,14 @@ A consumer is identified by a **consumer group**.
 
 The `hwm` table stores one independent position for every combination of:
 
+* bucket
 * topic
 * consumer group
-* bucket
 
 Each consumer group therefore consumes a topic independently of every other consumer group.
 
 Within a consumer group, bucket ownership is exclusive:
-at any given time, exactly one consumer instance must own a particular `(topic, consumer_group, bucket)` combination.
+at any given time, exactly one consumer instance must own a particular `(bucket, topic, consumer_group)` combination.
 
 Two workers must never process the same bucket for the same consumer group simultaneously.
 
@@ -198,7 +199,7 @@ However, within the accounting group, bucket 42 must be owned by exactly one wor
 This ownership guarantees:
 
 * FIFO processing within a bucket.
-* A single writer to the high-water mark for each (topic, consumer_group, bucket).
+* A single writer to the high-water mark for each `(bucket, topic, consumer_group)`.
 * No duplicate processing caused by concurrent consumers advancing the same offset.
 
 Sample client implementation in file `consumer.py`.
