@@ -8,14 +8,22 @@ messages, ordering, consumer progress, and retention. There is no separate
 broker process or daemon; producers and consumers talk directly to CockroachDB
 over SQL.
 
+## Installation
+
+FabMQ is not published to PyPI yet. Install it directly from GitHub:
+
+```bash
+pip install git+https://github.com/fabiog1901/fabmq.git
+```
+
 ## CLI Example
 
 ```bash
 export DATABASE_URL="postgresql://user:password@localhost:26257/mq?sslmode=disable"
 
 fabmq topic create payments
-fabmq produce payments '{"account_id":"123","amount":100}' --json
-fabmq consume payments accounting --batch-size 10 --limit 10
+fabmq produce --topic payments '{"account_id":"123","amount":100}' --json
+fabmq consume --topic payments --consumer-group accounting --batch-size 10 --limit 10
 ```
 
 ## SDK Example
