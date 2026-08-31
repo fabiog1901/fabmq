@@ -27,7 +27,7 @@ fabmq produce --topic payments '{"account_id":"123","amount":100}' --json
 fabmq consume --topic payments --consumer-group accounting --batch-size 10 --limit 10
 ```
 
-## SDK Example
+## SDK Admin Example
 
 ```python
 import psycopg
@@ -39,21 +39,55 @@ with psycopg.connect(
 ) as conn:
     mq = MQ(conn)
 
+    mq.init_schema()
     mq.create_topic("payments")
+```
+
+## SDK Producer Example
+
+```python
+import psycopg
+
+from fabmq import MQ
+
+with psycopg.connect(
+    "postgresql://user:password@localhost:26257/mq?sslmode=disable"
+) as conn:
+    mq = MQ(conn)
 
     job_id = mq.enqueue(
         topic="payments",
         payload={"account_id": "123", "amount": 100},
     )
+```
 
-    with mq.consume(
-        topic="payments",
-        consumer_group="accounting",
-        bucket=42,
-        batch_size=10,
-    ) as jobs:
-        for job in jobs:
-            print(job.id, job.payload)
+## SDK Listener Example
+
+```python
+import time
+
+import psycopg
+
+from fabmq import MQ
+
+with psycopg.connect(
+    "postgresql://user:password@localhost:26257/mq?sslmode=disable",
+    autocommit=True,
+) as conn:
+    mq = MQ(conn)
+
+    while True:
+        with mq.consume(
+            topic="payments",
+            consumer_group="accounting",
+            bucket=42,
+            batch_size=10,
+        ) as jobs:
+            for job in jobs:
+                print(job.id, job.payload)
+
+        if not jobs:
+            time.sleep(1.0)
 ```
 
 The database schema and SQL functions must be installed before using the CLI or
