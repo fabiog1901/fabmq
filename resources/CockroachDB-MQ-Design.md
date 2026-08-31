@@ -134,7 +134,7 @@ Result:
   3963167672086036487
 ```
 
-I simulate a producer using dbworkload, see `producer.py` file
+I simulate a producer using dbworkload, see [`producer.py`](tools/producer.py).
 
 ```bash
 $ dbworkload run \
@@ -202,4 +202,4 @@ This ownership guarantees:
 * A single writer to the high-water mark for each `(bucket, topic, consumer_group)`.
 * No duplicate processing caused by concurrent consumers advancing the same offset.
 
-Sample client implementation in file `consumer.py`.
+Sample client implementation in file [`consumer.py`](tools/consumer.py).
