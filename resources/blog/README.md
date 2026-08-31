@@ -400,7 +400,7 @@ with the database that already holds the truth.
 ## References
 
 - [CockroachDB product overview](https://www.cockroachlabs.com/product/overview/)
-- [CockroachDB Row-Level TTL explained](https://www.cockroachlabs.com/blog/row-level-ttl-explained/)
-- [When and why to use SELECT FOR UPDATE in CockroachDB](https://www.cockroachlabs.com/blog/when-and-why-to-use-select-for-update-in-cockroachdb/)
+- [FOR UPDADE](https://docs.cockroachlabs.com/docs/stable/select-for-update)
+- [CockroachDB Row-Level TTL explained](https://docs.cockroachlabs.com/docs/stable/row-level-ttl)
 - [Apache Kafka documentation](https://kafka.apache.org/documentation/)
 - [CockroachDB-backed message queue design](../../resources/CockroachDB-MQ-Design.md)
