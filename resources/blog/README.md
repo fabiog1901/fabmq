@@ -297,8 +297,7 @@ This blog will not provide full test replication steps, and instead it invites r
 
 Below is a snippet of the summary results taken from the tests conducted by Cockroach Labs Professional Services team.
 
-CockroachDB v26.2.5 · paired 10 h runs, 8.33 h measurement window
-outbox-256 vs mq , started 2s apart on identically specified clusters. 
+CockroachDB v26.2.5 · paired 10 h runs on identically specified clusters.
 Medians over the `[start+120m, end−10m]` window.
 
 | metric (median) | outbox-256 | mq | mq advantage |
