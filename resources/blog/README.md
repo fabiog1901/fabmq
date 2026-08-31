@@ -11,16 +11,17 @@ need a dedicated streaming system like Kafka.
 
 ## Problem Statement
 
-Applications often need a queue before they need a full streaming platform.
+Applications often need a **queue** before they need a full streaming platform.
 
 A user signs up, a payment clears, an order changes state, a report needs to be
 generated, a webhook needs to be delivered. The application wants to record the
-business fact durably, then hand some work to another process.
+business fact durably, then _hand some work to another process_.
 
 CockroachDB is a distributed SQL database designed for resilient, horizontally
 scalable transactional workloads. It gives application developers a familiar SQL
-interface while keeping data consistent across a distributed system. Message
-queue systems, on the other hand, are built to decouple producers and consumers:
+interface while keeping data consistent across a distributed system.
+
+Message queue systems, on the other hand, are built to decouple producers and consumers:
 one part of the system publishes work or events, and another part processes them
 later.
 
@@ -28,22 +29,24 @@ Both are useful. The hard part is deciding where the boundary should be.
 
 ## The Common Queue Decision
 
-Many teams start with a queue table in their application database. A typical
-pattern is below, known in the industry as **SFUSL**, as in `SELECT FOR UPDATE SKIP LOCKED`:
+Many teams start with a queue table, often called **outbox** or **events** table, in their application database.
+A typical pattern is below, known in the industry as **SFUSL**, as in `SELECT FOR UPDATE SKIP LOCKED`:
 
 ```sql
 BEGIN;
 
-SELECT id, payload
-FROM jobs
-WHERE status = 'pending'
-ORDER BY created_at
-LIMIT 1
-FOR UPDATE SKIP LOCKED;
+  SELECT id, payload
+  FROM outbox
+  WHERE status = 'pending'
+  ORDER BY created_at
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED;
 
-UPDATE jobs
-SET status = 'done'
-WHERE id = $1;
+  -- do something with that row/job...
+
+  UPDATE outbox
+  SET status = 'done'
+  WHERE id = $1;
 
 COMMIT;
 ```
@@ -56,6 +59,7 @@ But this design has limits. A busy queue table can become a point of contention.
 Rows are selected, locked, updated, and deleted. Workers may repeatedly scan for
 available work. As throughput grows, the table starts behaving less like a
 simple queue and more like an accidental broker.
+Many papers and blog posts have explored how to turn a relational table into a queue, and they often arrive at the same conclusion: beyond a certain throughput, this pattern can run into scalability and efficiency limits.
 
 At the other end of the spectrum are dedicated message systems such as Apache
 Kafka. Kafka is excellent when you need a distributed event streaming platform:
@@ -78,7 +82,7 @@ solvable, but they usually require extra machinery: an outbox table, CDC,
 idempotent consumers, deduplication keys, retries, and operational monitoring
 across multiple systems.
 
-That may be the right architecture. But it is not free.
+That may be the right architecture, _but it is not free_.
 
 ## The Middle Space
 
