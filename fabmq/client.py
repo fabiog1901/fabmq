@@ -11,17 +11,12 @@ from fabmq.topic import TopicManager
 
 
 class MQ:
-    def __init__(
-        self,
-        url: str | None = None,
-        connection: psycopg.Connection[Any] | None = None,
-    ) -> None:
-        self.url = url
+    def __init__(self, connection: psycopg.Connection[Any]) -> None:
         self.connection = connection
-        self.admin = Admin(url=url, connection=connection)
+        self.admin = Admin(connection)
         self.topics = TopicManager(self.admin)
-        self.producer = Producer(url=url, connection=connection)
-        self.consumer_client = Consumer(url=url, connection=connection)
+        self.producer = Producer(connection)
+        self.consumer_client = Consumer(connection)
 
     def init_schema(self, drop: bool = False) -> str:
         return self.admin.init_schema(drop=drop)

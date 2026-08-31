@@ -30,25 +30,30 @@ fabmq consume --topic payments --consumer-group accounting --batch-size 10 --lim
 ## SDK Example
 
 ```python
+import psycopg
+
 from fabmq import MQ
 
-mq = MQ("postgresql://user:password@localhost:26257/mq?sslmode=disable")
+with psycopg.connect(
+    "postgresql://user:password@localhost:26257/mq?sslmode=disable"
+) as conn:
+    mq = MQ(conn)
 
-mq.create_topic("payments")
+    mq.create_topic("payments")
 
-job_id = mq.enqueue(
-    topic="payments",
-    payload={"account_id": "123", "amount": 100},
-)
+    job_id = mq.enqueue(
+        topic="payments",
+        payload={"account_id": "123", "amount": 100},
+    )
 
-with mq.consume(
-    topic="payments",
-    consumer_group="accounting",
-    bucket=42,
-    batch_size=10,
-) as jobs:
-    for job in jobs:
-        print(job.id, job.payload)
+    with mq.consume(
+        topic="payments",
+        consumer_group="accounting",
+        bucket=42,
+        batch_size=10,
+    ) as jobs:
+        for job in jobs:
+            print(job.id, job.payload)
 ```
 
 The database schema and SQL functions must be installed before using the CLI or

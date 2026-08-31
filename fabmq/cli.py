@@ -9,6 +9,7 @@ import psycopg
 import typer
 
 from fabmq.client import MQ
+from fabmq.connection import connect
 from fabmq.consumer import parse_buckets
 from fabmq.exceptions import FabMQError
 
@@ -26,10 +27,6 @@ UrlOption = Annotated[
         help="CockroachDB connection URL.",
     ),
 ]
-
-
-def _mq(url: str | None) -> MQ:
-    return MQ(url=url)
 
 
 def _echo_json(value: Any) -> None:
@@ -95,7 +92,8 @@ def init_schema(
         )
 
     try:
-        schema_version = _mq(url).init_schema(drop=drop)
+        with connect(url) as conn:
+            schema_version = MQ(conn).init_schema(drop=drop)
     except (FabMQError, ValueError, psycopg.Error) as error:
         _handle_error(error)
 
@@ -117,7 +115,8 @@ def remove_schema(
         )
 
     try:
-        _mq(url).remove_schema()
+        with connect(url) as conn:
+            MQ(conn).remove_schema()
     except (FabMQError, ValueError, psycopg.Error) as error:
         _handle_error(error)
 
@@ -127,7 +126,8 @@ def remove_schema(
 @app.command("status")
 def status(url: UrlOption = None) -> None:
     try:
-        schema_status = _mq(url).status()
+        with connect(url) as conn:
+            schema_status = MQ(conn).status()
     except (FabMQError, ValueError, psycopg.Error) as error:
         _handle_error(error)
 
@@ -140,7 +140,8 @@ def create_topic(
     url: UrlOption = None,
 ) -> None:
     try:
-        topic = _mq(url).create_topic(name)
+        with connect(url) as conn:
+            topic = MQ(conn).create_topic(name)
     except (FabMQError, ValueError, psycopg.Error) as error:
         _handle_error(error)
 
@@ -153,7 +154,8 @@ def delete_topic(
     url: UrlOption = None,
 ) -> None:
     try:
-        topic = _mq(url).delete_topic(name)
+        with connect(url) as conn:
+            topic = MQ(conn).delete_topic(name)
     except (FabMQError, ValueError, psycopg.Error) as error:
         _handle_error(error)
 
@@ -163,7 +165,8 @@ def delete_topic(
 @topic_app.command("list")
 def list_topics(url: UrlOption = None) -> None:
     try:
-        topics = _mq(url).list_topics()
+        with connect(url) as conn:
+            topics = MQ(conn).list_topics()
     except (FabMQError, ValueError, psycopg.Error) as error:
         _handle_error(error)
 
@@ -199,32 +202,33 @@ def produce(
     ] = True,
 ) -> None:
     try:
-        mq = _mq(url)
+        with connect(url) as conn:
+            mq = MQ(conn)
 
-        if live:
-            try:
-                while True:
+            if live:
+                try:
+                    while True:
+                        if sys.stdin.isatty():
+                            typer.echo("> ", nl=False, err=True)
+
+                        line = sys.stdin.readline()
+                        if not line:
+                            break
+
+                        message = _parse_payload(line.rstrip("\n"), json_payload)
+                        job_id = mq.enqueue(topic, message)
+                        _echo_produced(topic, job_id, show_job_id)
+                except KeyboardInterrupt:
                     if sys.stdin.isatty():
-                        typer.echo("> ", nl=False, err=True)
+                        typer.echo(err=True)
+                    raise typer.Exit(0) from None
+                return
 
-                    line = sys.stdin.readline()
-                    if not line:
-                        break
+            if payload is None:
+                raise ValueError("payload is required unless --live is enabled")
 
-                    message = _parse_payload(line.rstrip("\n"), json_payload)
-                    job_id = mq.enqueue(topic, message)
-                    _echo_produced(topic, job_id, show_job_id)
-            except KeyboardInterrupt:
-                if sys.stdin.isatty():
-                    typer.echo(err=True)
-                raise typer.Exit(0) from None
-            return
-
-        if payload is None:
-            raise ValueError("payload is required unless --live is enabled")
-
-        message = _parse_payload(payload, json_payload)
-        job_id = mq.enqueue(topic, message)
+            message = _parse_payload(payload, json_payload)
+            job_id = mq.enqueue(topic, message)
     except (FabMQError, ValueError, json.JSONDecodeError, psycopg.Error) as error:
         _handle_error(error)
 
@@ -276,46 +280,47 @@ def consume(
     ] = 1.0,
 ) -> None:
     try:
-        mq = _mq(url)
-        parsed_buckets = parse_buckets(buckets)
+        with connect(url) as conn:
+            mq = MQ(conn)
+            parsed_buckets = parse_buckets(buckets)
 
-        if live:
-            try:
-                while True:
-                    found_jobs = False
-                    for bucket in parsed_buckets:
-                        with mq.consume(
-                            topic=topic,
-                            consumer_group=consumer_group,
-                            bucket=bucket,
-                            batch_size=batch_size,
-                        ) as jobs:
-                            for job in jobs:
-                                found_jobs = True
-                                _echo_job(job, payload_only)
+            if live:
+                try:
+                    while True:
+                        found_jobs = False
+                        for bucket in parsed_buckets:
+                            with mq.consume(
+                                topic=topic,
+                                consumer_group=consumer_group,
+                                bucket=bucket,
+                                batch_size=batch_size,
+                            ) as jobs:
+                                for job in jobs:
+                                    found_jobs = True
+                                    _echo_job(job, payload_only)
 
-                    if not found_jobs and poll_interval:
-                        time.sleep(poll_interval)
-            except KeyboardInterrupt:
-                raise typer.Exit(0) from None
-            return
+                        if not found_jobs and poll_interval:
+                            time.sleep(poll_interval)
+                except KeyboardInterrupt:
+                    raise typer.Exit(0) from None
+                return
 
-        consumed = 0
-        for bucket in parsed_buckets:
-            remaining = None if limit is None else limit - consumed
-            if remaining is not None and remaining <= 0:
-                break
+            consumed = 0
+            for bucket in parsed_buckets:
+                remaining = None if limit is None else limit - consumed
+                if remaining is not None and remaining <= 0:
+                    break
 
-            size = batch_size if remaining is None else min(batch_size, remaining)
-            with mq.consume(
-                topic=topic,
-                consumer_group=consumer_group,
-                bucket=bucket,
-                batch_size=size,
-            ) as jobs:
-                for job in jobs:
-                    _echo_job(job, payload_only)
-                    consumed += 1
+                size = batch_size if remaining is None else min(batch_size, remaining)
+                with mq.consume(
+                    topic=topic,
+                    consumer_group=consumer_group,
+                    bucket=bucket,
+                    batch_size=size,
+                ) as jobs:
+                    for job in jobs:
+                        _echo_job(job, payload_only)
+                        consumed += 1
     except (FabMQError, ValueError, psycopg.Error) as error:
         _handle_error(error)
 

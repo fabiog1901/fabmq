@@ -5,8 +5,6 @@ from typing import Any
 
 import psycopg
 
-from fabmq.connection import connection_scope
-
 
 def serialize_payload(payload: Any) -> str:
     if isinstance(payload, bytes):
@@ -19,34 +17,36 @@ def serialize_payload(payload: Any) -> str:
 
 
 class Producer:
-    def __init__(
-        self,
-        url: str | None = None,
-        connection: psycopg.Connection[Any] | None = None,
-    ) -> None:
-        self.url = url
+    def __init__(self, connection: psycopg.Connection[Any]) -> None:
         self.connection = connection
 
     def enqueue(self, topic: str, payload: Any) -> int:
         serialized = serialize_payload(payload)
-
-        with connection_scope(self.url, self.connection) as (conn, should_commit):
-            with conn.cursor() as cur:
-                cur.execute("SELECT enqueue_job(%s, %s)", (topic, serialized))
-                row = cur.fetchone()
-            if should_commit:
-                conn.commit()
-
-        return int(row[0])
+        return self._enqueue(self.connection, topic, serialized)
 
     def enqueue_batch(self, topic: str, payloads: list[Any]) -> list[int]:
         serialized = [serialize_payload(payload) for payload in payloads]
+        return self._enqueue_batch(self.connection, topic, serialized)
 
-        with connection_scope(self.url, self.connection) as (conn, should_commit):
-            with conn.cursor() as cur:
-                cur.execute("SELECT enqueue_jobs(%s, %s)", (topic, serialized))
-                row = cur.fetchone()
-            if should_commit:
-                conn.commit()
+    def _enqueue(
+        self,
+        conn: psycopg.Connection[Any],
+        topic: str,
+        payload: str,
+    ) -> int:
+        with conn.cursor() as cur:
+            cur.execute("SELECT enqueue_job(%s, %s)", (topic, payload))
+            row = cur.fetchone()
+        return int(row[0])
+
+    def _enqueue_batch(
+        self,
+        conn: psycopg.Connection[Any],
+        topic: str,
+        payloads: list[str],
+    ) -> list[int]:
+        with conn.cursor() as cur:
+            cur.execute("SELECT enqueue_jobs(%s, %s)", (topic, payloads))
+            row = cur.fetchone()
 
         return [int(row[0])]
