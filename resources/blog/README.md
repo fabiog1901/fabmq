@@ -86,7 +86,7 @@ That may be the right architecture, _but it is not free_.
 
 ## The Middle Space
 
-The CockroachDB-backed MQ design in this repository explores a middle path.
+The CockroachDB-backed MQ [design](https://github.com/fabiog1901/fabmq/blob/main/resources/CockroachDB-MQ-Design.md) presented in this blog explores a middle path.
 
 It is meant for cases where a simple queue table with `SELECT FOR UPDATE SKIP
 LOCKED` is starting to look too small, but a dedicated MQ or streaming system
@@ -410,4 +410,4 @@ with the database that already holds the truth.
 - [FOR UPDADE](https://docs.cockroachlabs.com/docs/stable/select-for-update)
 - [CockroachDB Row-Level TTL explained](https://docs.cockroachlabs.com/docs/stable/row-level-ttl)
 - [Apache Kafka documentation](https://kafka.apache.org/documentation/)
-- [CockroachDB-backed message queue design](../../resources/CockroachDB-MQ-Design.md)
+- [CockroachDB-backed message queue design](https://github.com/fabiog1901/fabmq/blob/main/resources/CockroachDB-MQ-Design.md)
