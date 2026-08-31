@@ -10,8 +10,7 @@ over SQL.
 
 ## Design
 
-This repository also hosts the CockroachDB-backed message queue design paper:
-`resources/CockroachDB-MQ-Design.md`.
+This repository also hosts the [CockroachDB-backed message queue design paper](resources/CockroachDB-MQ-Design.md).
 
 A related blog post is available to introduce the design and project:
 [A CockroachDB-Backed Message Queue Between `SKIP LOCKED` and Kafka](https://dev.to/cockroachlabs/a-cockroachdb-backed-message-queue-between-skip-locked-and-kafka-15l8).
