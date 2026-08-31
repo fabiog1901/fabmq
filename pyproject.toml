@@ -5,7 +5,7 @@ description = "CLI/SDK for the CockroachDB Backed MQ Design"
 authors = [
     {name = "Fabio Ghirardello",email = "ghirardello.fabio@gmail.com"}
 ]
-license = "Apache License 2.0"
+license = "	Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -15,6 +15,11 @@ dependencies = [
 
 [project.scripts]
 fabmq = "fabmq.cli:main"
+
+[tool.poetry]
+include = [
+    { path = "sql/001_initial.sql", format = ["sdist", "wheel"] },
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

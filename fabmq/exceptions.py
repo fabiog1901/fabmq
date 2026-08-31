@@ -6,5 +6,9 @@ class ConfigurationError(FabMQError):
     """Raised when required configuration is missing or invalid."""
 
 
+class SchemaError(FabMQError):
+    """Raised when FabMQ schema management cannot proceed safely."""
+
+
 class TopicError(FabMQError):
     """Raised for topic administration failures."""

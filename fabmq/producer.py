@@ -44,15 +44,9 @@ class Producer:
 
         with connection_scope(self.url, self.connection) as (conn, should_commit):
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT job_id
-                    FROM enqueue_jobs(%s, %s)
-                    """,
-                    (topic, serialized),
-                )
-                rows = cur.fetchall()
+                cur.execute("SELECT enqueue_jobs(%s, %s)", (topic, serialized))
+                row = cur.fetchone()
             if should_commit:
                 conn.commit()
 
-        return [int(row[0]) for row in rows]
+        return [int(row[0])]

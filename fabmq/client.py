@@ -23,6 +23,15 @@ class MQ:
         self.producer = Producer(url=url, connection=connection)
         self.consumer_client = Consumer(url=url, connection=connection)
 
+    def init_schema(self, drop: bool = False) -> str:
+        return self.admin.init_schema(drop=drop)
+
+    def remove_schema(self) -> None:
+        self.admin.remove_schema()
+
+    def status(self) -> dict[str, Any]:
+        return self.admin.status()
+
     def create_topic(self, name: str) -> str:
         return self.admin.create_topic(name)
 

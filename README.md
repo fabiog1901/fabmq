@@ -21,6 +21,7 @@ pip install git+https://github.com/fabiog1901/fabmq.git
 ```bash
 export DATABASE_URL="postgresql://user:password@localhost:26257/mq?sslmode=disable"
 
+fabmq init
 fabmq topic create payments
 fabmq produce --topic payments '{"account_id":"123","amount":100}' --json
 fabmq consume --topic payments --consumer-group accounting --batch-size 10 --limit 10
@@ -51,4 +52,4 @@ with mq.consume(
 ```
 
 The database schema and SQL functions must be installed before using the CLI or
-SDK. The current prototype schema lives in `mq/mq.sql`.
+SDK. The installer uses `sql/001_initial.sql` as the schema source.

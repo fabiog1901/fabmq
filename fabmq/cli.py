@@ -73,6 +73,67 @@ def _echo_produced(topic: str, job_id: int, show_job_id: bool) -> None:
         _echo_json({"job_id": job_id, "topic": topic})
 
 
+@app.command("init")
+def init_schema(
+    url: UrlOption = None,
+    drop: Annotated[
+        bool,
+        typer.Option(
+            "--drop",
+            help="Drop existing FabMQ objects before initializing.",
+        ),
+    ] = False,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Skip destructive confirmation prompts."),
+    ] = False,
+) -> None:
+    if drop and not yes:
+        typer.confirm(
+            "Drop existing FabMQ tables, functions, and metadata first?",
+            abort=True,
+        )
+
+    try:
+        schema_version = _mq(url).init_schema(drop=drop)
+    except (FabMQError, ValueError, psycopg.Error) as error:
+        _handle_error(error)
+
+    _echo_json({"schema_version": schema_version, "status": "initialized"})
+
+
+@app.command("remove")
+def remove_schema(
+    url: UrlOption = None,
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Skip destructive confirmation prompt."),
+    ] = False,
+) -> None:
+    if not yes:
+        typer.confirm(
+            "Drop all FabMQ tables, functions, and metadata from this database?",
+            abort=True,
+        )
+
+    try:
+        _mq(url).remove_schema()
+    except (FabMQError, ValueError, psycopg.Error) as error:
+        _handle_error(error)
+
+    _echo_json({"status": "removed"})
+
+
+@app.command("status")
+def status(url: UrlOption = None) -> None:
+    try:
+        schema_status = _mq(url).status()
+    except (FabMQError, ValueError, psycopg.Error) as error:
+        _handle_error(error)
+
+    _echo_json(schema_status)
+
+
 @topic_app.command("create")
 def create_topic(
     name: Annotated[str, typer.Argument(help="Topic name.")],
