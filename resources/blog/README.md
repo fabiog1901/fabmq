@@ -86,7 +86,7 @@ That may be the right architecture, _but it is not free_.
 
 ## The Middle Space
 
-The CockroachDB-backed MQ [design](https://github.com/fabiog1901/fabmq/blob/main/resources/CockroachDB-MQ-Design.md) presented in this blog explores a middle path.
+The CockroachDB-backed MQ [design](../CockroachDB-MQ-Design.md) presented in this blog explores a middle path.
 
 It is meant for cases where a simple queue table with `SELECT FOR UPDATE SKIP
 LOCKED` is starting to look too small, but a dedicated MQ or streaming system
@@ -114,10 +114,7 @@ Conceptually, the producer path looks like this:
 Producer sends payload to enqueue
   |
   v
-hash(payload) modulo 256
-  |
-  v
-bucket
+calculate the bucket using a function - hash(payload) modulo 256
   |
   v
 lock sentinel row for that bucket
@@ -178,21 +175,13 @@ The result is a database-backed queue that can scale along several dimensions:
 - Contention is localized to bucket-level sequence allocation.
 - Queue state remains transactionally available inside CockroachDB.
 
-### FabMQ
-
-FabMQ is a small CLI and Python SDK for managing and using this design. It can
-initialize the schema, create topics, produce messages, and consume messages,
-but it is not a broker. There is no daemon sitting between the application and
-the database. The SQL interface remains first-class.
-
 The core idea is:
 
-> CockroachDB stores the durable truth; FabMQ provides convenient behavior.
+> CockroachDB stores the durable truth; queue behavior is implemented through
+> SQL and application-level consumers.
 
 This keeps the queue design close to the database's strengths: ordered keys,
 transactions, range distribution, and TTL cleanup.
-
-Next, we cover certain concepts using examples that use FabMQ.
 
 ## Atomicity Where It Matters
 
@@ -201,50 +190,36 @@ can be part of the same CockroachDB transaction.
 
 For small batches, the consumer flow is:
 
-```python
-# here and next, `mq` is an instance of FabMQ's MQ class
-
-with mq.consume(
-    topic="payments",
-    consumer_group="accounting",
-    bucket=42,
-    batch_size=10,
-) as jobs:
-    for job in jobs:
-        process(job)
+```text
+BEGIN
+  read next messages for topic/bucket after last_seq_id
+  process each message
+  insert new hwm row
+COMMIT
 ```
 
-If the block exits normally, FabMQ inserts the new high-water mark. If the block
-raises an exception, the high-water mark does not advance.
+If the transaction commits cleanly, the high-water mark advances. If processing
+fails and the transaction rolls back, the high-water mark does not advance.
 
 The application still owns the business logic. That is intentional. A long
 running worker can keep polling in application code:
 
-```python
-import time
-
-while True:
-    with mq.consume(
-        topic="payments",
-        consumer_group="accounting",
-        bucket=42,
-        batch_size=10,
-    ) as jobs:
-        for job in jobs:
-            process(job)
-
-    if not jobs:
-        time.sleep(1.0)
+```text
+while running:
+  read next batch for assigned bucket
+  if rows were returned:
+    process rows and advance hwm in one transaction
+  else:
+    sleep briefly
 ```
 
-The SDK provides the safe consume primitive. The application decides how to
-poll, back off, handle signals, retry failures, and distribute buckets across
-workers.
+The application decides how to poll, back off, handle signals, retry failures,
+and distribute buckets across workers.
 
 ## SQL Is the Interface
 
-FabMQ is a Python SDK and CLI for this design, but the SQL interface is not an
-implementation detail. It is a first-class interface.
+The SQL interface is not an implementation detail. It is a first-class
+interface.
 
 Create a topic directly in SQL:
 
@@ -255,7 +230,7 @@ SELECT create_topic('payments');
 List topics:
 
 ```sql
-SELECT * FROM list_topics();
+SELECT list_topics();
 ```
 
 Produce one message:
@@ -316,7 +291,41 @@ BEGIN;
 COMMIT;
 ```
 
-The CLI is a convenience layer over that database interface:
+## Performance Notes
+
+This blog will not provide full test replication steps, and instead it invites readers to test on their own.
+
+Below is a snippet of the summary results taken from the tests conducted by Cockroach Labs Professional Services team.
+
+CockroachDB v26.2.5 · paired 10 h runs, 8.33 h measurement window
+outbox-256 vs mq , started 2s apart on identically specified clusters. 
+Medians over the `[start+120m, end−10m]` window.
+
+| metric (median) | outbox-256 | mq | mq advantage |
+| --- | --- | --- | --- |
+| p99 SQL service latency | 11.861 ms | 5.643 ms | 2.10x |
+| CPU efficiency | 6.351 ms/stmt | 3.515 ms/stmt | 1.81x |
+| IO efficiency | 2.481 IOPS/stmt | 1.565 IOPS/stmt | 1.59x |
+| throughput | 3,999 stmt/s | 6,302 stmt/s | 1.58x |
+
+![box plot](box-plot.png)
+
+Below chart shows the SQL p99 service latency over the duration of the test.
+The path clearly highlights the stability of the MQ design over SFUSL.
+
+![p99](sql-p99.png)
+
+## FabMQ as a Convenience Layer
+
+FabMQ is a small CLI and Python SDK for managing and using this design. It can
+initialize the schema, create topics, produce messages, and consume messages,
+but it is not a broker. There is no daemon sitting between the application and
+the database.
+
+The SQL interface remains first-class. FabMQ is simply a convenience layer over
+the same database objects and functions shown above.
+
+The CLI can initialize the schema and interact with topics:
 
 ```bash
 export DATABASE_URL="postgresql://user:password@localhost:26257/mq?sslmode=disable"
@@ -364,29 +373,31 @@ with psycopg.connect(
     mq.enqueue("payments", {"account_id": "123", "amount": 100})
 ```
 
-## Performance Notes
+For consumers, the SDK provides the acknowledgement-safe primitive. The
+application owns the polling loop:
 
-This blog will not provide full test replication steps, and instead it invites readers to test on their own.
+```python
+import time
 
-Below is a snippet of the summary results taken from the tests conducted by Cockroach Labs Professional Services team.
+with psycopg.connect(
+    "postgresql://user:password@localhost:26257/mq?sslmode=disable",
+    autocommit=True,
+) as conn:
+    mq = MQ(conn)
 
-CockroachDB v26.2.5 · paired 10 h runs, 8.33 h measurement window
-outbox-256 vs mq , started 2s apart on identically specified clusters. 
-Medians over the `[start+120m, end−10m]` window.
+    while True:
+        with mq.consume(
+            topic="payments",
+            consumer_group="accounting",
+            bucket=42,
+            batch_size=10,
+        ) as jobs:
+            for job in jobs:
+                process(job)
 
-| metric (median) | outbox-256 | mq | mq advantage |
-| --- | --- | --- | --- |
-| p99 SQL service latency | 11.861 ms | 5.643 ms | 2.10x |
-| CPU efficiency | 6.351 ms/stmt | 3.515 ms/stmt | 1.81x |
-| IO efficiency | 2.481 IOPS/stmt | 1.565 IOPS/stmt | 1.59x |
-| throughput | 3,999 stmt/s | 6,302 stmt/s | 1.58x |
-
-![box plot](box-plot.png)
-
-Below chart shows the SQL p99 service latency over the duration of the test.
-The path clearly highlights the stability of the MQ design over SFUSL.
-
-![p99](sql-p99.png)
+        if not jobs:
+            time.sleep(1.0)
+```
 
 ## Where This Fits
 
