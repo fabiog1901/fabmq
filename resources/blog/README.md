@@ -403,4 +403,4 @@ with the database that already holds the truth.
 - [CockroachDB Row-Level TTL explained](https://www.cockroachlabs.com/blog/row-level-ttl-explained/)
 - [When and why to use SELECT FOR UPDATE in CockroachDB](https://www.cockroachlabs.com/blog/when-and-why-to-use-select-for-update-in-cockroachdb/)
 - [Apache Kafka documentation](https://kafka.apache.org/documentation/)
-- [CockroachDB-backed message queue design](resources/CockroachDB-MQ-Design.md)
+- [CockroachDB-backed message queue design](../../resources/CockroachDB-MQ-Design.md)
