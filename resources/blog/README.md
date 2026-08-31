@@ -428,3 +428,4 @@ with the database that already holds the truth.
 - [CockroachDB Row-Level TTL explained](https://docs.cockroachlabs.com/docs/stable/row-level-ttl)
 - [Apache Kafka documentation](https://kafka.apache.org/documentation/)
 - [CockroachDB-backed message queue design](https://github.com/fabiog1901/fabmq/blob/main/resources/CockroachDB-MQ-Design.md)
+- [FabMQ](https://github.com/fabiog1901/fabmq)
