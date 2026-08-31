@@ -1,3 +1,5 @@
+![logo](resources/logo.png)
+
 # FabMQ
 
 FabMQ is a Python SDK and CLI for using CockroachDB as a durable message queue.
