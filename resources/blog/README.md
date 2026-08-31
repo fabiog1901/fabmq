@@ -3,7 +3,7 @@
 
 # A CockroachDB-Backed Message Queue Between `SKIP LOCKED` and Kafka
 
-## Synopsys
+## Synopsis
 
 This post explores a CockroachDB-backed message queue design for teams that
 need more structure and throughput than a simple database queue, but do not yet
