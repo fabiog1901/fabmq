@@ -163,7 +163,7 @@ This turns queue access into ordered key lookups rather than broad scans. The
 consumer already knows the topic, bucket, and last sequence number. It can ask
 for the next rows in that ordered stream.
 
-The design is also mostly append-only. Producers insert message rows. Consumers
+The design is also exclusively append-only. Producers insert message rows. Consumers
 insert high-water-mark rows. Normal processing does not update message rows from
 `pending` to `running` to `done`, so the system avoids a large amount of MVCC
 churn that update-heavy queue tables can create. Old message and HWM rows are
@@ -178,6 +178,8 @@ The result is a database-backed queue that can scale along several dimensions:
 - Contention is localized to bucket-level sequence allocation.
 - Queue state remains transactionally available inside CockroachDB.
 
+### FabMQ
+
 FabMQ is a small CLI and Python SDK for managing and using this design. It can
 initialize the schema, create topics, produce messages, and consume messages,
 but it is not a broker. There is no daemon sitting between the application and
@@ -190,6 +192,8 @@ The core idea is:
 This keeps the queue design close to the database's strengths: ordered keys,
 transactions, range distribution, and TTL cleanup.
 
+Next, we cover certain concepts using examples that use FabMQ.
+
 ## Atomicity Where It Matters
 
 The important property is that message processing and high-water-mark movement
@@ -198,6 +202,8 @@ can be part of the same CockroachDB transaction.
 For small batches, the consumer flow is:
 
 ```python
+# here and next, `mq` is an instance of FabMQ's MQ class
+
 with mq.consume(
     topic="payments",
     consumer_group="accounting",
