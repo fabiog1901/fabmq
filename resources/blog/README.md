@@ -1,3 +1,6 @@
+> Disclaimer: While this text was prepared with AI assistance, the content has
+> been vetted and approved by the author.
+
 # A CockroachDB-Backed Message Queue Between `SKIP LOCKED` and Kafka
 
 ## Synopsys
