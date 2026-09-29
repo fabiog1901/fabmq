@@ -1,4 +1,4 @@
-![logo](resources/logo.png)
+![logo](resources/queue-flow.png)
 
 # FabMQ
 
